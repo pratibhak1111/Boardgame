@@ -22,6 +22,7 @@ SSH_KEY = private key
 <img width="1908" height="962" alt="image" src="https://github.com/user-attachments/assets/5539b5c0-3aa5-498b-aa51-3ba8bfdfd89b" />    
 *******************************************************************************************************************************************  
 **Deployment Using GitHub Actions Deploy application to a VM or cloud instance Use SSH-based deployment Restart service after deployment**  
+
 Created .github/workflows/deploy.yml file to Deploy  
 <img width="1378" height="827" alt="image" src="https://github.com/user-attachments/assets/e3973e5b-5f6c-4bb2-a506-cf872a40e0ce" />  
 <img width="1918" height="968" alt="image" src="https://github.com/user-attachments/assets/a0359ea3-c17a-4c93-bc11-b5f39cf7fd46" />  
