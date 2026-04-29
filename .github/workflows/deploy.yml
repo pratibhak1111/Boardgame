@@ -39,7 +39,7 @@ jobs:
       - name: Deploy to EC2
         run: |
           scp -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa target/*.jar \
-          ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/home/ubuntu/app/app.jar
+          ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/home/ubuntu/app/boardgame.jar
 
       # 7. Restart App
       - name: Restart App
