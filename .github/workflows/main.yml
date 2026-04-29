@@ -1,40 +1,38 @@
-name: Deploy to EC2
+name: Maven Build
 
 on:
-  workflow_run:
-    workflows: ["Java CI with Maven"]   # must match EXACT name
-    types:
-      - completed
+  push:
+    branches:
+      - main
 
 jobs:
-  deploy:
+  build:
     runs-on: self-hosted
 
     steps:
-      # 📥 Download JAR from previous workflow
-      - name: Download artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: boardgame
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      # 🔐 Setup SSH
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Install Maven (if not installed)
+        run: sudo apt-get update && sudo apt-get install -y maven
+
+      - name: Build with Maven
+        run: mvn clean install
+
+      # 🔐 Setup SSH Key (IMPORTANT)
       - name: Setup SSH key
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-
-      # 📦 Copy JAR to EC2
-      - name: Copy JAR
+      # 🔗 Test SSH Connection
+      - name: Connect to server
         run: |
-          scp -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa *.jar \
-          ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/home/ubuntu/app/app.jar
-
-      # 🔄 Restart App
-      - name: Restart App
-        run: |
-          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa \
-          ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "
-            sudo systemctl restart myapp
-            sudo systemctl status myapp --no-pager
-          "
+          echo "Connecting to server..."
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "echo Connected"
