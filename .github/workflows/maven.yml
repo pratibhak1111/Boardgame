@@ -17,8 +17,9 @@ jobs:
         distribution: 'temurin'
         cache: maven
     - name: Build with Maven
-      run: mvn -B compile --file pom.xml
-
+      run: |
+      mvn compile
+      echo "Complie done"
  test:
     name: Execute unit test project
     runs-on: ubuntu-latest
