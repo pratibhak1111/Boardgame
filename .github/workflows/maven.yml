@@ -68,7 +68,7 @@ jobs:
     - name: Custom Step Env Demo
       env:
          BUILD_TYPE: release
-        run: echo "Build Type is $BUILD_TYPE"
+      run: echo "Build Type is $BUILD_TYPE"
 
     - name: Set up JDK 17
       uses: actions/setup-java@v4
