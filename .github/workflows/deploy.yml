@@ -1,0 +1,49 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+      # 1. Get code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Setup Java
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      # 3. Install Maven
+      - name: Install Maven
+        run: sudo apt-get update && sudo apt-get install -y maven
+
+      # 4. Build JAR
+      - name: Build
+        run: mvn clean package
+
+      # 5. Setup SSH
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+      # 6. Copy JAR to EC2
+      - name: Deploy to EC2
+        run: |
+          scp -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa target/*.jar \
+          ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/home/ubuntu/app/app.jar
+
+      # 7. Restart App
+      - name: Restart App
+        run: |
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa \
+          ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
+          "sudo systemctl restart myapp"
