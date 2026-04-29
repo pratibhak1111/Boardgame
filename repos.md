@@ -10,6 +10,7 @@ Created maven.yml file
 
 **Secrets and Environment Variables**  
 Created main.yaml file .github/workflows/main.yml  
+Create Ec2 configure as Self-hosted runner  
 Github -> Settings → Secrets and variables → Actions  
 Click “New repository secret”  
 Add secrets like:  
