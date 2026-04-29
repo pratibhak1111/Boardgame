@@ -1,0 +1,122 @@
+variables:
+  SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar"  # Defines the location of the analysis task cache
+  GIT_DEPTH: "0"  # Tells git to fetch all the branches of the project, required by the analysis task
+
+
+stages:  
+  - install 
+  - compile
+  - gitleaks
+  - trivy_fs_scan
+  - test 
+  - build-sonar      
+  - build
+  - deploy
+
+
+install-job:       
+  stage: install
+  script:
+    - sudo apt install -y openjdk-17-jre-headless 
+    - sudo apt install -y maven 
+    - sudo apt-get install wget gnupg
+    - wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
+    - echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
+    - sudo apt-get update
+    - sudo apt-get install -y trivy 
+    - sudo apt install -y gitleaks
+  tags:
+    - self-hosted
+
+compile-job:       # This job runs in the build stage, which runs first.
+  stage: compile
+  script:
+    - mvn compile
+  tags:
+    - self-hosted
+
+gitleaks-scan-job:       # This job runs in the build stage, which runs first.
+  stage: gitleaks
+  script:
+    - gitleaks detect --source . -r gitleaks-report.txt 
+  needs:
+    - job: compile-job
+  tags:
+    - self-hosted
+
+trivy-fs-scan-job:       
+  stage: trivy_fs_scan
+  script:
+    - trivy fs --format table -o fs-report.html .
+  needs:
+    - job: gitleaks-scan-job
+  tags:
+    - self-hosted
+
+unit-test-job:   # This job runs in the test stage.
+  stage: test    # It only starts when the job in the build stage completes successfully.
+  script:
+    - mvn test
+  artifacts:
+    name: "classes-${CI_COMMIT_SHORT_SHA}"
+    paths:
+      - target/classes/
+    expire_in: 1 week
+  tags:
+    - self-hosted
+
+lint-test-job:   # This job also runs in the test stage.
+  stage: test    # It can run at the same time as unit-test-job (in parallel).
+  script:
+    - echo "Linting code... This will take about 10 seconds."
+    - sleep 10
+    - echo "No lint issues found."
+  tags:
+    - self-hosted
+
+
+build-sonar:   # This job also runs in the test stage.
+  stage: build-sonar    # It can run at the same time as unit-test-job (in parallel).
+  image: 
+    name: sonarsource/sonar-scanner-cli:11
+  needs:
+    - job: unit-test-job
+      artifacts: true 
+  cache:
+    policy: pull-push
+    key: "sonar-cache-$CI_COMMIT_REF_SLUG"
+    paths:
+      - "${SONAR_USER_HOME}/cache"
+      - sonar-scanner/
+  script: 
+  - sonar-scanner -Dsonar.host.url="${SONAR_HOST_URL}" -Dsonar.login="${SONAR_TOKEN}"
+  allow_failure: true
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+    - if: $CI_COMMIT_BRANCH == 'master'
+    - if: $CI_COMMIT_BRANCH == 'main'
+
+
+build-job:       # This job runs in the build stage, which runs first.
+  stage: build
+  script:
+    - mvn package
+  artifacts:
+    name: "build- ${CI_COMMIT_SHORT_SHA}"
+    paths:
+      - target/*.jar
+    expire_in: 14 days
+    when: on_success
+  needs:
+    - job: unit-test-job  
+  tags:
+    - self-hosted
+
+deploy-job:      # This job runs in the deploy stage.
+  stage: deploy  # It only runs when *both* jobs in the test stage complete successfully.
+  environment: production
+  script:
+    - echo "Deploying application..."
+    - echo "Application successfully deployed."
+  tags:
+    - self-hosted
